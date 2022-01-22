@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, Daniel Bertalan <dani@danielbertalan.dev>
+ * Copyright (c) 2022, Alex Major
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -13,6 +14,8 @@
 #include <AK/String.h>
 #include <AK/StringView.h>
 #include <AK/Vector.h>
+#include <LibCore/System.h>
+#include <LibMain/Main.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -527,28 +530,19 @@ Result<void, int> apply_modes(size_t parameter_count, char** raw_parameters, ter
     return {};
 }
 
-int main(int argc, char** argv)
+ErrorOr<int> serenity_main(Main::Arguments arguments)
 {
-    if (pledge("stdio tty rpath", nullptr) < 0) {
-        perror("pledge");
-        return 1;
-    }
-
-    if (unveil("/dev", "r") < 0) {
-        perror("unveil");
-        return 1;
-    }
-
-    if (unveil(nullptr, nullptr) < 0) {
-        perror("unveil");
-        return 1;
-    }
+    TRY(Core::System::pledge("stdio tty rpath"));
+    TRY(Core::System::unveil("/dev", "r"));
+    TRY(Core::System::unveil(nullptr, nullptr));
 
     String device_file;
     bool stty_readable = false;
     bool all_settings = false;
 
     // Core::ArgsParser can't handle the weird syntax of stty, so we use getopt_long instead.
+    int argc = arguments.argc;
+    char** argv = arguments.argv;
     opterr = 0; // We handle unknown flags gracefully by starting to parse the arguments in `apply_modes`.
     int optc;
     bool should_quit = false;
